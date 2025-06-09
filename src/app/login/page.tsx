@@ -1,5 +1,4 @@
 "use client";
-
 import { FormEvent, useState } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
@@ -33,20 +32,46 @@ export default function LoginPage() {
   const [activeInput, setActiveInput] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(false);
   const [isPending, setIsPending] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [showSuccessPopup, setShowSuccessPopup] = useState(false);
+  const [isRedirecting, setIsRedirecting] = useState(false);
 
   async function handleLogin(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setIsPending(true);
-    const formData = new FormData(event.currentTarget);
-    const email = formData.get("email");
-    const password = formData.get("password");
+    setError(null);
 
-    if (email && password) {
-      // Simulate API call
-      setTimeout(() => {
-        router.push("/dashboard");
-        setIsPending(false);
-      }, 1000);
+    const formData = new FormData(event.currentTarget);
+    const email = formData.get("email") as string;
+    const password = formData.get("password") as string;
+
+    try {
+      const response = await fetch('/api/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Login gagal');
+      }
+
+      // Show success popup
+      setShowSuccessPopup(true);
+      setIsRedirecting(true);
+      
+      // Wait 2 seconds before redirecting
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      
+      // Redirect to dashboard
+      router.push('/tambah-anak');
+
+    } catch (error: any) {
+      setError(error.message);
+    } finally {
+      setIsPending(false);
+      setIsRedirecting(false);
     }
   }
 
@@ -113,6 +138,7 @@ export default function LoginPage() {
 
               {/* Form */}
               <form onSubmit={handleLogin} className="space-y-4 md:space-y-6">
+                {/* Email Input */}
                 <div className="space-y-2 md:space-y-3">
                   <label className="block text-sm md:text-base font-medium text-white">
                     Email
@@ -138,6 +164,7 @@ export default function LoginPage() {
                   </motion.div>
                 </div>
 
+                {/* Password Input */}
                 <div className="space-y-2 md:space-y-3">
                   <label className="block text-sm md:text-base font-medium text-white">
                     Password
@@ -145,9 +172,7 @@ export default function LoginPage() {
                   <motion.div
                     animate={{
                       boxShadow:
-                        activeInput === "password"
-                          ? "0 0 0 0px #1a2e1a"
-                          : "none",
+                        activeInput === "password" ? "0 0 0 0px #1a2e1a" : "none",
                       borderColor:
                         activeInput === "password" ? "#1a2e1a" : "transparent",
                     }}
@@ -175,6 +200,18 @@ export default function LoginPage() {
                   </motion.div>
                 </div>
 
+                {/* Error Message */}
+                {error && (
+                  <motion.div
+                    initial={{ opacity: 0, y: -10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="text-red-300 text-sm p-2 bg-red-900/30 rounded-md"
+                  >
+                    {error}
+                  </motion.div>
+                )}
+
+                {/* Submit Button */}
                 <motion.button
                   type="submit"
                   className="w-full py-2 md:py-3 bg-[#3D4F3E] hover:bg-green-600 rounded-lg text-white font-semibold hover:cursor-pointer flex items-center justify-center gap-2 transition-colors duration-300 text-sm md:text-base"
@@ -184,7 +221,10 @@ export default function LoginPage() {
                 >
                   {isPending ? (
                     <>
-                      <span className="animate-spin">↻</span>
+                      <svg className="animate-spin h-5 w-5 mr-2" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
                       Memproses...
                     </>
                   ) : (
@@ -196,6 +236,7 @@ export default function LoginPage() {
                 </motion.button>
               </form>
 
+              {/* Registration Link */}
               <div className="text-center mt-4 md:mt-6 pt-4 md:pt-6 border-t border-[#3D4F3E]">
                 <p className="text-xs md:text-sm text-white">
                   Belum punya akun?{" "}
@@ -212,6 +253,41 @@ export default function LoginPage() {
           </motion.div>
         </div>
       </div>
+
+      {/* Success Popup */}
+      {showSuccessPopup && (
+        <div className="fixed inset-0 backdrop-blur-sm flex items-center justify-center z-50">
+          <motion.div
+            initial={{ scale: 0.8, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            className="bg-white rounded-lg p-6 max-w-sm w-full mx-4 text-center"
+          >
+            <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-green-100">
+              <svg
+                className="h-6 w-6 text-green-600"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M5 13l4 4L19 7"
+                />
+              </svg>
+            </div>
+            <h3 className="mt-3 text-lg font-medium text-gray-900">Login Berhasil!</h3>
+            <div className="mt-4 flex items-center justify-center text-gray-700">
+              <svg className="animate-spin h-5 w-5 mr-3 text-green-600" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+              <span>Mengalihkan ke dashboard...</span>
+            </div>
+          </motion.div>
+        </div>
+      )}
     </div>
   );
 }

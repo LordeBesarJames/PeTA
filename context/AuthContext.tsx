@@ -1,4 +1,4 @@
-// contexts/AuthContext.tsx
+// context/AuthContext.tsx
 "use client";
 import {
   createContext,
@@ -32,10 +32,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // Fetch current user
   const fetchUser = async () => {
     try {
-      const response = await fetch("/api/user");
+      setLoading(true);
+      const response = await fetch("/api/user", {
+        credentials: "include",
+        cache: "no-store",
+      });
+
       if (response.ok) {
         const data = await response.json();
-        setUser(data.user);
+        if (data.success && data.user) {
+          setUser(data.user);
+        } else {
+          setUser(null);
+        }
       } else {
         setUser(null);
       }
@@ -49,29 +58,44 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // Login function
   const login = async (email: string, password: string) => {
-    const response = await fetch("/api/login", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email, password }),
-    });
+    setLoading(true);
+    try {
+      const response = await fetch("/api/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ email, password }),
+      });
 
-    if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.error || "Login gagal");
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Login gagal");
+      }
+
+      const data = await response.json();
+      if (data.success && data.user) {
+        setUser(data.user);
+      } else {
+        throw new Error("Login response tidak valid");
+      }
+    } finally {
+      setLoading(false);
     }
-
-    const data = await response.json();
-    setUser(data.user);
   };
 
   // Logout function
   const logout = async () => {
+    setLoading(true);
     try {
-      await fetch("/api/logout", { method: "POST" });
+      await fetch("/api/logout", {
+        method: "POST",
+        credentials: "include",
+      });
     } catch (error) {
       console.error("Logout error:", error);
     } finally {
       setUser(null);
+      setLoading(false);
     }
   };
 
@@ -80,6 +104,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await fetchUser();
   };
 
+  // Initial load
   useEffect(() => {
     fetchUser();
   }, []);

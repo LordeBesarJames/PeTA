@@ -4,6 +4,7 @@ import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { LogIn, Eye, EyeOff } from "lucide-react";
+import { useAuth } from "../../../context/AuthContext";
 
 // Animation variants
 const containerVariants = {
@@ -29,12 +30,12 @@ const itemVariants = {
 
 export default function LoginPage() {
   const router = useRouter();
+  const { login } = useAuth();
   const [activeInput, setActiveInput] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(false);
   const [isPending, setIsPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showSuccessPopup, setShowSuccessPopup] = useState(false);
-  const [isRedirecting, setIsRedirecting] = useState(false);
 
   async function handleLogin(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -45,32 +46,28 @@ export default function LoginPage() {
     const email = formData.get("email") as string;
     const password = formData.get("password") as string;
 
-    try {
-      const response = await fetch("/api/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password }),
-      });
+    if (!email || !password) {
+      setError("Email dan password harus diisi");
+      setIsPending(false);
+      return;
+    }
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || "Login gagal");
-      }
+    try {
+      // Use the login function from context
+      await login(email.trim(), password);
 
       // Show success popup
       setShowSuccessPopup(true);
-      setIsRedirecting(true);
 
       // Wait 2 seconds before redirecting
-      await new Promise((resolve) => setTimeout(resolve, 2000));
-
-      // Redirect to dashboard
-      router.push("/dashboard");
+      setTimeout(() => {
+        router.push("/dashboard");
+      }, 2000);
     } catch (error: any) {
       setError(error.message);
+      setShowSuccessPopup(false);
     } finally {
       setIsPending(false);
-      setIsRedirecting(false);
     }
   }
 
@@ -156,9 +153,10 @@ export default function LoginPage() {
                       name="email"
                       placeholder="Masukkan Email"
                       required
+                      disabled={isPending}
                       onFocus={() => setActiveInput("email")}
                       onBlur={() => setActiveInput(null)}
-                      className="w-full px-4 py-2 md:py-3 bg-white text-gray-900 focus:outline-none placeholder-gray-500 text-sm md:text-base"
+                      className="w-full px-4 py-2 md:py-3 bg-white text-gray-900 focus:outline-none placeholder-gray-500 text-sm md:text-base disabled:opacity-50"
                     />
                   </motion.div>
                 </div>
@@ -184,14 +182,16 @@ export default function LoginPage() {
                       name="password"
                       placeholder="Masukkan Password"
                       required
+                      disabled={isPending}
                       onFocus={() => setActiveInput("password")}
                       onBlur={() => setActiveInput(null)}
-                      className="w-full px-4 py-2 md:py-3 bg-white text-gray-900 focus:outline-none placeholder-gray-500 text-sm md:text-base pr-10"
+                      className="w-full px-4 py-2 md:py-3 bg-white text-gray-900 focus:outline-none placeholder-gray-500 text-sm md:text-base pr-10 disabled:opacity-50"
                     />
                     <button
                       type="button"
                       onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-600 hover:text-green-600"
+                      disabled={isPending}
+                      className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-600 hover:text-green-600 disabled:opacity-50"
                       aria-label={
                         showPassword ? "Hide password" : "Show password"
                       }
@@ -206,7 +206,7 @@ export default function LoginPage() {
                   <motion.div
                     initial={{ opacity: 0, y: -10 }}
                     animate={{ opacity: 1, y: 0 }}
-                    className="text-red-300 text-sm p-2 bg-red-900/30 rounded-md"
+                    className="text-red-300 text-sm p-3 bg-red-900/30 rounded-md border border-red-700/30"
                   >
                     {error}
                   </motion.div>
@@ -215,9 +215,9 @@ export default function LoginPage() {
                 {/* Submit Button */}
                 <motion.button
                   type="submit"
-                  className="w-full py-2 md:py-3 bg-[#3D4F3E] hover:bg-green-600 rounded-lg text-white font-semibold hover:cursor-pointer flex items-center justify-center gap-2 transition-colors duration-300 text-sm md:text-base"
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
+                  className="w-full py-2 md:py-3 bg-[#3D4F3E] hover:bg-green-600 rounded-lg text-white font-semibold hover:cursor-pointer flex items-center justify-center gap-2 transition-colors duration-300 text-sm md:text-base disabled:opacity-50 disabled:cursor-not-allowed"
+                  whileHover={!isPending ? { scale: 1.02 } : {}}
+                  whileTap={!isPending ? { scale: 0.98 } : {}}
                   disabled={isPending}
                 >
                   {isPending ? (
@@ -271,7 +271,7 @@ export default function LoginPage() {
 
       {/* Success Popup */}
       {showSuccessPopup && (
-        <div className="fixed inset-0 backdrop-blur-sm flex items-center justify-center z-50">
+        <div className="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-50">
           <motion.div
             initial={{ scale: 0.8, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}

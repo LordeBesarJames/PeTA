@@ -8,7 +8,10 @@ export async function GET() {
 
     if (!user) {
       return NextResponse.json(
-        { error: "Tidak ada sesi aktif" },
+        {
+          error: "Tidak ada sesi aktif",
+          success: false,
+        },
         { status: 401 }
       );
     }
@@ -25,7 +28,10 @@ export async function GET() {
   } catch (error: any) {
     console.error("Get user error:", error);
     return NextResponse.json(
-      { error: error.message || "Terjadi kesalahan saat mengambil data user" },
+      {
+        error: error.message || "Terjadi kesalahan saat mengambil data user",
+        success: false,
+      },
       { status: 500 }
     );
   }

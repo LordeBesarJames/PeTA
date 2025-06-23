@@ -34,13 +34,18 @@ export default function RegisterPage() {
   const [isPending, setIsPending] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
   const [popupOpen, setPopupOpen] = useState(false);
-  const [popupType, setPopupType] = useState<'success' | 'error'>('success');
-  const [popupMessage, setPopupMessage] = useState('');
+  const [popupType, setPopupType] = useState<"success" | "error">("success");
+  const [popupMessage, setPopupMessage] = useState("");
 
-  const PopupModal = ({ isOpen, onClose, type, message }: {
+  const PopupModal = ({
+    isOpen,
+    onClose,
+    type,
+    message,
+  }: {
     isOpen: boolean;
     onClose: () => void;
-    type: 'success' | 'error';
+    type: "success" | "error";
     message: string;
   }) => {
     if (!isOpen) return null;
@@ -55,38 +60,73 @@ export default function RegisterPage() {
           className="fixed inset-0 backdrop-blur-sm z-40"
           onClick={onClose}
         />
-      
-        
+
         <div className="fixed inset-0 flex items-center justify-center z-50 pointer-events-none">
           <motion.div
             initial={{ scale: 0.9, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             exit={{ scale: 0.9, opacity: 0 }}
-            transition={{ type: 'spring', damping: 20 }}
+            transition={{ type: "spring", damping: 20 }}
             className="bg-white rounded-lg p-6 w-full max-w-md mx-4 relative pointer-events-auto"
           >
             <div className="text-center">
-              <div className={`mx-auto flex items-center justify-center h-12 w-12 rounded-full ${type === 'success' ? 'bg-green-100' : 'bg-red-100'}`}>
-                {type === 'success' ? (
-                  <svg className="h-6 w-6 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+              <div
+                className={`mx-auto flex items-center justify-center h-12 w-12 rounded-full ${
+                  type === "success" ? "bg-green-100" : "bg-red-100"
+                }`}
+              >
+                {type === "success" ? (
+                  <svg
+                    className="h-6 w-6 text-green-600"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M5 13l4 4L19 7"
+                    />
                   </svg>
                 ) : (
-                  <svg className="h-6 w-6 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  <svg
+                    className="h-6 w-6 text-red-600"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M6 18L18 6M6 6l12 12"
+                    />
                   </svg>
                 )}
               </div>
-              <h3 className={`mt-3 text-lg font-medium ${type === 'success' ? 'text-green-800' : 'text-red-800'}`}>
+              <h3
+                className={`mt-3 text-lg font-medium ${
+                  type === "success" ? "text-green-800" : "text-red-800"
+                }`}
+              >
                 {message}
               </h3>
               <div className="mt-6">
                 <button
                   type="button"
-                  className={`inline-flex justify-center rounded-md border border-transparent px-4 py-2 text-sm font-medium text-white ${type === 'success' ? 'bg-green-600 hover:bg-green-700' : 'bg-red-600 hover:bg-red-700'} focus:outline-none focus:ring-2 focus:ring-offset-2 ${type === 'success' ? 'focus:ring-green-500' : 'focus:ring-red-500'}`}
+                  className={`inline-flex justify-center rounded-md border border-transparent px-4 py-2 text-sm font-medium text-white ${
+                    type === "success"
+                      ? "bg-green-600 hover:bg-green-700"
+                      : "bg-red-600 hover:bg-red-700"
+                  } focus:outline-none focus:ring-2 focus:ring-offset-2 ${
+                    type === "success"
+                      ? "focus:ring-green-500"
+                      : "focus:ring-red-500"
+                  }`}
                   onClick={onClose}
                 >
-                  {type === 'success' ? 'Pergi ke Dashboard' : 'Registrasi Kembali'}
+                  {type === "success" ? "Pergi ke Login" : "Registrasi Kembali"}
                 </button>
               </div>
             </div>
@@ -101,29 +141,29 @@ export default function RegisterPage() {
     setIsPending(true);
 
     const formData = new FormData(event.currentTarget);
-    const username = formData.get('username') as string;
-    const email = formData.get('email') as string;
-    const password = formData.get('password') as string;
-    const phone = formData.get('phone') as string;
+    const username = formData.get("username") as string;
+    const email = formData.get("email") as string;
+    const password = formData.get("password") as string;
+    const phone = formData.get("phone") as string;
 
     try {
-      const res = await fetch('/api/register', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+      const res = await fetch("/api/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ username, email, password, phone }),
       });
 
       const data = await res.json();
 
       if (!res.ok) {
-        setPopupType('error');
-        setPopupMessage(data.error || 'Registrasi gagal');
+        setPopupType("error");
+        setPopupMessage(data.error || "Registrasi gagal");
         setPopupOpen(true);
-        throw new Error(data.error || 'Registration failed');
+        throw new Error(data.error || "Registration failed");
       }
 
-      setPopupType('success');
-      setPopupMessage('Registrasi Berhasil!');
+      setPopupType("success");
+      setPopupMessage("Registrasi Berhasil!");
       setPopupOpen(true);
     } catch (error: any) {
       console.error(error);
@@ -371,14 +411,13 @@ export default function RegisterPage() {
           </motion.div>
         </div>
       </div>
-
       {/* Popup Modal */}
       <PopupModal
         isOpen={popupOpen}
         onClose={() => {
           setPopupOpen(false);
-          if (popupType === 'success') {
-            router.push('/tambah-anak'); // Change to your dashboard route
+          if (popupType === "success") {
+            router.push("/login"); // Change to your dashboard route
           }
         }}
         type={popupType}

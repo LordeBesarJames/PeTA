@@ -9,10 +9,18 @@ export async function POST(request: Request) {
   try {
     const { email, password } = await request.json();
 
+    // Input validation
+    if (!email || !password) {
+      return NextResponse.json(
+        { error: "Email dan password harus diisi" },
+        { status: 400 }
+      );
+    }
+
     // 1. Check if user exists
     const { rows } = await pool.query(
       "SELECT id_user, nama, email, password, no_telp FROM users WHERE email = $1 LIMIT 1",
-      [email]
+      [email.toLowerCase().trim()]
     );
 
     if (rows.length === 0) {
@@ -30,10 +38,13 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Password salah" }, { status: 401 });
     }
 
-    // 3. Create session
+    // 3. Delete existing sessions for this user (optional - for single session per user)
+    await pool.query("DELETE FROM sessions WHERE user_id = $1", [user.id_user]);
+
+    // 4. Create new session
     const token = await createSession(user.id_user);
 
-    // 4. Set cookie
+    // 5. Set cookie
     const cookieStore = cookies();
     (await cookieStore).set("session-token", token, {
       httpOnly: true,
@@ -43,7 +54,7 @@ export async function POST(request: Request) {
       path: "/",
     });
 
-    // 5. Return success response
+    // 6. Return success response with user data
     return NextResponse.json({
       success: true,
       user: {
@@ -52,6 +63,7 @@ export async function POST(request: Request) {
         email: user.email,
         no_telp: user.no_telp,
       },
+      message: "Login berhasil",
     });
   } catch (error: any) {
     console.error("Login error:", error);

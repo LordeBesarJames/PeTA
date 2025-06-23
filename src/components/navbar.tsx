@@ -15,7 +15,7 @@ import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 
 export default function Navbar() {
-  const { user, logout } = useAuth();
+  const { user, logout, loading } = useAuth();
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
@@ -38,15 +38,46 @@ export default function Navbar() {
   }, []);
 
   const handleLogout = async () => {
-    await logout();
-    setIsDropdownOpen(false);
-    router.push("/");
+    try {
+      await logout();
+      setIsDropdownOpen(false);
+      router.push("/");
+    } catch (error) {
+      console.error("Logout failed:", error);
+    }
   };
 
   const handleProfileClick = () => {
     setIsDropdownOpen(false);
     router.push("/profile");
   };
+
+  // Show loading state
+  if (loading) {
+    return (
+      <div className="sticky top-0 z-50 w-full">
+        <div className="w-full h-16 bg-[#ACD3A8] border-b-4 border-[#5A674F]"></div>
+        <div className="relative -mt-6">
+          <div className="max-w-7xl mx-auto px-4">
+            <nav className="bg-[#5A674F] rounded-[100px] shadow-lg h-14 flex items-center border-2 border-white">
+              <div className="w-full flex items-center justify-between px-6">
+                <div className="flex items-center space-x-8">
+                  <div className="animate-pulse bg-white/20 rounded h-6 w-16"></div>
+                  <div className="animate-pulse bg-white/20 rounded h-6 w-20"></div>
+                  <div className="animate-pulse bg-white/20 rounded h-6 w-16"></div>
+                  <div className="animate-pulse bg-white/20 rounded h-6 w-18"></div>
+                </div>
+                <div className="absolute left-1/2 transform -translate-x-1/2 h-10 w-10">
+                  <div className="animate-pulse bg-white/20 rounded-full h-10 w-10"></div>
+                </div>
+                <div className="animate-pulse bg-white/20 rounded h-8 w-20"></div>
+              </div>
+            </nav>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="sticky top-0 z-50 w-full">

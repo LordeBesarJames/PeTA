@@ -1,4 +1,3 @@
-// app/api/login/route.ts
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import pool from "@/lib/db";
@@ -38,23 +37,22 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Password salah" }, { status: 401 });
     }
 
-    // 3. Delete existing sessions for this user (optional - for single session per user)
-    await pool.query("DELETE FROM sessions WHERE user_id = $1", [user.id_user]);
+    // 3. Create new session (createSession sudah menghandle penghapusan session lama)
+    const { token, expiresAt } = await createSession(user.id_user);
 
-    // 4. Create new session
-    const token = await createSession(user.id_user);
-
-    // 5. Set cookie
+    // 4. Set cookie - PERBAIKAN DISINI
     const cookieStore = cookies();
-    (await cookieStore).set("session-token", token, {
+    (await cookieStore).set({
+      name: "session_token", // Konsisten dengan nama di auth.ts
+      value: token,
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
       sameSite: "lax",
-      maxAge: 60 * 60 * 24 * 7, // 7 days
+      expires: expiresAt, // Gunakan expiresAt dari createSession
       path: "/",
     });
 
-    // 6. Return success response with user data
+    // 5. Return success response with user data
     return NextResponse.json({
       success: true,
       user: {

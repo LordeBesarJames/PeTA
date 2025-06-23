@@ -7,6 +7,7 @@ import {
   useState,
   ReactNode,
 } from "react";
+import { useRouter } from "next/navigation";
 
 interface User {
   id: string;
@@ -28,6 +29,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const router = useRouter();
 
   // Fetch current user
   const fetchUser = async () => {
@@ -38,13 +40,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         cache: "no-store",
       });
 
-      if (response.ok) {
-        const data = await response.json();
-        if (data.success && data.user) {
-          setUser(data.user);
-        } else {
-          setUser(null);
+      const data = await response.json();
+
+      if (!response.ok) {
+        if (response.status === 401) {
+          // Clear invalid session
+          await fetch("/api/logout", {
+            method: "POST",
+            credentials: "include",
+          });
         }
+        setUser(null);
+        return;
+      }
+
+      if (data.success && data.user) {
+        setUser(data.user);
       } else {
         setUser(null);
       }
@@ -67,17 +78,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         body: JSON.stringify({ email, password }),
       });
 
+      const data = await response.json();
+
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || "Login gagal");
+        throw new Error(data.error || "Login gagal");
       }
 
-      const data = await response.json();
       if (data.success && data.user) {
         setUser(data.user);
+        router.push("/"); // Redirect after successful login
       } else {
         throw new Error("Login response tidak valid");
       }
+    } catch (error: any) {
+      console.error("Login error:", error);
+      throw error; // Re-throw to be handled by the caller
     } finally {
       setLoading(false);
     }
@@ -91,10 +106,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         method: "POST",
         credentials: "include",
       });
+      setUser(null);
+      router.push("/login"); // Redirect to login page after logout
     } catch (error) {
       console.error("Logout error:", error);
+      throw error;
     } finally {
-      setUser(null);
       setLoading(false);
     }
   };

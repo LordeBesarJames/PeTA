@@ -1,6 +1,7 @@
 "use client";
 import Navbar from "@/components/navbar";
 import React, { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import {
   ChevronLeft,
   ChevronRight,
@@ -15,52 +16,153 @@ import {
   Book,
   Target,
   Image,
+  Plus,
+  Loader2,
+  AlertCircle,
 } from "lucide-react";
-import { image } from "framer-motion/client";
+
+interface Stats {
+  totalChildren: number;
+  avgGrowth: number;
+  recipesShared: number;
+  weeklyProgress: number;
+}
+
+interface UserData {
+  id: string;
+  nama: string;
+  email: string;
+  no_telp: string;
+}
 
 export default function TambahAnakPage() {
+  const router = useRouter();
   const [currentSlide, setCurrentSlide] = useState(0);
-  const [stats, setStats] = useState({
+  const [stats, setStats] = useState<Stats>({
     totalChildren: 0,
     avgGrowth: 0,
     recipesShared: 0,
     weeklyProgress: 0,
   });
   const [isLoaded, setIsLoaded] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [user, setUser] = useState<UserData | null>(null);
 
-  // Mock data untuk banner slider dengan warna yang selaras dengan navbar hijau
+  // Banner slider data
   const bannerSlides = [
     {
       id: 1,
       title: "Pantau Pertumbuhan Anak",
       subtitle:
         "Lacak perkembangan nutrisi dan kesehatan anak Anda dengan mudah",
-      bgColor: "bg-[#7FB069]", // Hijau lebih gelap dari navbar
+      bgColor: "bg-[#7FB069]",
       icon: <Activity className="w-16 h-16 text-white" />,
-      imageSrc: "/image/gambar-anak.png", // Kosongkan untuk placeholder, atau isi dengan URL gambar
+      imageSrc: "/image/gambar-anak.png",
       imagePlaceholder: "Gambar anak-anak yang sedang bermain",
+      action: () => router.push("/tambah-anak"),
     },
     {
       id: 2,
       title: "Resep Sehat & Bergizi",
       subtitle:
         "Temukan beragam resep makanan sehat untuk mendukung tumbuh kembang anak",
-      bgColor: "bg-[#8FBC8F]", // Sage green yang lembut
+      bgColor: "bg-[#8FBC8F]",
       icon: <ChefHat className="w-16 h-16 text-white" />,
-      imageSrc: "/image/sushi2.png", // Kosongkan untuk placeholder, atau isi dengan URL gambar
+      imageSrc: "/image/sushi2.png",
       imagePlaceholder: "Gambar berbagai makanan sehat untuk anak",
+      action: () => router.push("/resep"),
     },
     {
       id: 3,
       title: "Tracker Gizi Harian",
       subtitle:
         "Monitor asupan gizi harian dan dapatkan rekomendasi yang tepat",
-      bgColor: "bg-[#98D982]", // Hijau terang yang segar
+      bgColor: "bg-[#98D982]",
       icon: <TrendingUp className="w-16 h-16 text-white" />,
-      imageSrc: "/image/tracker.png", // Kosongkan untuk placeholder, atau isi dengan URL gambar
+      imageSrc: "/image/tracker.png",
       imagePlaceholder: "Gambar grafik pertumbuhan anak",
+      action: () => router.push("/tracker"),
     },
   ];
+
+  // Fetch user data
+  useEffect(() => {
+    const fetchUserData = async () => {
+      try {
+        const response = await fetch("/api/user");
+        if (!response.ok) {
+          if (response.status === 401) {
+            router.push("/login");
+            return;
+          }
+          throw new Error("Failed to fetch user data");
+        }
+        const data = await response.json();
+        if (data.success) {
+          setUser(data.user);
+        }
+      } catch (err) {
+        console.error("Error fetching user:", err);
+      }
+    };
+
+    fetchUserData();
+  }, [router]);
+
+  // Fetch stats from API
+  useEffect(() => {
+    const fetchStats = async () => {
+      try {
+        setIsLoading(true);
+        const response = await fetch("/api/stats");
+
+        if (!response.ok) {
+          if (response.status === 401) {
+            router.push("/login");
+            return;
+          }
+          throw new Error("Failed to fetch stats");
+        }
+
+        const data = await response.json();
+        if (data.success) {
+          // Animate stats loading
+          const animateStats = () => {
+            setTimeout(() => {
+              setStats((prev) => ({
+                ...prev,
+                totalChildren: data.data.totalChildren,
+              }));
+            }, 100);
+            setTimeout(() => {
+              setStats((prev) => ({ ...prev, avgGrowth: data.data.avgGrowth }));
+            }, 300);
+            setTimeout(() => {
+              setStats((prev) => ({
+                ...prev,
+                recipesShared: data.data.recipesShared,
+              }));
+            }, 500);
+            setTimeout(() => {
+              setStats((prev) => ({
+                ...prev,
+                weeklyProgress: data.data.weeklyProgress,
+              }));
+            }, 700);
+          };
+          animateStats();
+        }
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Terjadi kesalahan");
+        console.error("Error fetching stats:", err);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchStats();
+  }, [router]);
 
   // Auto-slide functionality
   useEffect(() => {
@@ -68,27 +170,7 @@ export default function TambahAnakPage() {
       setCurrentSlide((prev) => (prev + 1) % bannerSlides.length);
     }, 5000);
     return () => clearInterval(interval);
-  }, []);
-
-  // Mock stats animation
-  useEffect(() => {
-    const animateStats = () => {
-      setTimeout(
-        () => setStats((prev) => ({ ...prev, totalChildren: 12 })),
-        100
-      );
-      setTimeout(() => setStats((prev) => ({ ...prev, avgGrowth: 98 })), 300);
-      setTimeout(
-        () => setStats((prev) => ({ ...prev, recipesShared: 45 })),
-        500
-      );
-      setTimeout(
-        () => setStats((prev) => ({ ...prev, weeklyProgress: 87 })),
-        700
-      );
-    };
-    animateStats();
-  }, []);
+  }, [bannerSlides.length]);
 
   // Animation on page load
   useEffect(() => {
@@ -110,30 +192,51 @@ export default function TambahAnakPage() {
       title: "Data Anak",
       description: "Kelola informasi lengkap tentang anak-anak Anda",
       icon: <Users className="w-8 h-8" />,
-      color: "from-[#7FB069] to-[#6BA055]", // Hijau selaras dengan navbar
+      color: "from-[#7FB069] to-[#6BA055]",
       hoverColor: "hover:from-[#6BA055] hover:to-[#5A8A47]",
       count: stats.totalChildren,
       label: "Anak Terdaftar",
+      link: "/tambah-anak",
     },
     {
       title: "Tracker Gizi",
       description: "Pantau asupan gizi dan pertumbuhan harian",
       icon: <TrendingUp className="w-8 h-8" />,
-      color: "from-[#8FBC8F] to-[#7AA67A]", // Sage green
+      color: "from-[#8FBC8F] to-[#7AA67A]",
       hoverColor: "hover:from-[#7AA67A] hover:to-[#669966]",
       count: stats.avgGrowth,
       label: "Rata-rata Progress",
+      unit: "%",
+      link: "/tracker",
     },
     {
       title: "Resep",
       description: "Koleksi resep sehat untuk anak-anak",
       icon: <ChefHat className="w-8 h-8" />,
-      color: "from-[#98D982] to-[#7FC464]", // Hijau terang
+      color: "from-[#98D982] to-[#7FC464]",
       hoverColor: "hover:from-[#7FC464] hover:to-[#66B04A]",
       count: stats.recipesShared,
       label: "Resep Tersedia",
+      link: "/resep",
     },
   ];
+
+  if (error) {
+    return (
+      <div className="relative min-h-screen bg-gray-50">
+        <Navbar />
+        <div className="container mx-auto px-4 sm:px-6 lg:px-20 py-8">
+          <div className="bg-red-50 border border-red-200 rounded-lg p-6 flex items-center space-x-3">
+            <AlertCircle className="w-6 h-6 text-red-600" />
+            <div>
+              <h3 className="text-red-800 font-semibold">Terjadi Kesalahan</h3>
+              <p className="text-red-600">{error}</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="relative min-h-screen bg-gray-50">
@@ -172,7 +275,10 @@ export default function TambahAnakPage() {
                         {slide.subtitle}
                       </p>
                       <div className="flex space-x-4 mt-6">
-                        <button className="bg-white text-gray-800 px-6 py-3 rounded-full font-semibold hover:bg-gray-100 transform hover:scale-105 transition-all duration-200 shadow-lg">
+                        <button
+                          onClick={slide.action}
+                          className="bg-white text-gray-800 px-6 py-3 rounded-full font-semibold hover:bg-gray-100 transform hover:scale-105 transition-all duration-200 shadow-lg"
+                        >
                           Mulai Sekarang
                         </button>
                         <button className="border-2 border-white text-white px-6 py-3 rounded-full font-semibold hover:bg-white hover:text-gray-800 transition-all duration-200">
@@ -200,9 +306,6 @@ export default function TambahAnakPage() {
                           <p className="text-white/70 text-sm">
                             {slide.imagePlaceholder}
                           </p>
-                          <button className="mt-4 bg-white/20 hover:bg-white/40 text-white px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200">
-                            Upload Gambar
-                          </button>
                         </div>
                       )}
                     </div>
@@ -249,25 +352,41 @@ export default function TambahAnakPage() {
           {[
             {
               label: "Total Anak",
-              value: stats.totalChildren,
+              value: isLoading ? (
+                <Loader2 className="w-5 h-5 animate-spin" />
+              ) : (
+                stats.totalChildren
+              ),
               icon: <Users className="w-5 h-5" />,
               color: "text-[#4A7C59]",
             },
             {
               label: "Progress Rata-rata",
-              value: `${stats.avgGrowth}%`,
+              value: isLoading ? (
+                <Loader2 className="w-5 h-5 animate-spin" />
+              ) : (
+                `${stats.avgGrowth}%`
+              ),
               icon: <TrendingUp className="w-5 h-5" />,
               color: "text-[#5A8A47]",
             },
             {
               label: "Resep Tersedia",
-              value: stats.recipesShared,
+              value: isLoading ? (
+                <Loader2 className="w-5 h-5 animate-spin" />
+              ) : (
+                stats.recipesShared
+              ),
               icon: <ChefHat className="w-5 h-5" />,
               color: "text-[#3D6B3D]",
             },
             {
               label: "Progress Minggu Ini",
-              value: `${stats.weeklyProgress}%`,
+              value: isLoading ? (
+                <Loader2 className="w-5 h-5 animate-spin" />
+              ) : (
+                `${stats.weeklyProgress}%`
+              ),
               icon: <Target className="w-5 h-5" />,
               color: "text-[#2E5A2E]",
             },
@@ -296,6 +415,7 @@ export default function TambahAnakPage() {
           {mainFeatures.map((feature, index) => (
             <div
               key={index}
+              onClick={() => router.push(feature.link)}
               className={`group relative bg-gradient-to-br ${feature.color} ${feature.hoverColor} rounded-2xl p-8 text-white shadow-xl hover:shadow-2xl transform hover:-translate-y-2 transition-all duration-300 cursor-pointer overflow-hidden`}
               style={{
                 animationDelay: `${600 + index * 200}ms`,
@@ -311,7 +431,16 @@ export default function TambahAnakPage() {
                     {feature.icon}
                   </div>
                   <div className="text-right">
-                    <div className="text-3xl font-bold">{feature.count}</div>
+                    <div className="text-3xl font-bold">
+                      {isLoading ? (
+                        <Loader2 className="w-8 h-8 animate-spin" />
+                      ) : (
+                        <>
+                          {feature.count}
+                          {feature.unit || ""}
+                        </>
+                      )}
+                    </div>
                     <div className="text-sm opacity-90">{feature.label}</div>
                   </div>
                 </div>
@@ -328,6 +457,27 @@ export default function TambahAnakPage() {
             </div>
           ))}
         </div>
+
+        {/* Quick Actions */}
+        {stats.totalChildren === 0 && !isLoading && (
+          <div className="bg-blue-50 border border-blue-200 rounded-xl p-8 text-center mb-12">
+            <Baby className="w-16 h-16 text-blue-600 mx-auto mb-4" />
+            <h3 className="text-xl font-semibold text-gray-800 mb-2">
+              Belum ada data anak
+            </h3>
+            <p className="text-gray-600 mb-6">
+              Mulai dengan menambahkan data anak Anda untuk memantau pertumbuhan
+              dan nutrisinya
+            </p>
+            <button
+              onClick={() => router.push("/tambah-anak")}
+              className="bg-blue-600 text-white px-6 py-3 rounded-full font-semibold hover:bg-blue-700 transform hover:scale-105 transition-all duration-200 shadow-lg inline-flex items-center"
+            >
+              <Plus className="w-5 h-5 mr-2" />
+              Tambah Data Anak Pertama
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Footer */}
@@ -339,11 +489,17 @@ export default function TambahAnakPage() {
               Mulai pantau pertumbuhan dan gizi anak Anda hari ini
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center mb-12">
-              <button className="bg-white text-[#4A7C59] px-8 py-3 rounded-full font-semibold hover:bg-gray-100 transform hover:scale-105 transition-all shadow-lg duration-200">
+              <button
+                onClick={() => router.push("/tambah-anak")}
+                className="bg-white text-[#4A7C59] px-8 py-3 rounded-full font-semibold hover:bg-gray-100 transform hover:scale-105 transition-all shadow-lg duration-200"
+              >
                 <Users className="w-5 h-5 inline mr-2" />
                 Tambah Data Anak
               </button>
-              <button className="border-2 border-white text-white px-8 py-3 rounded-full font-semibold hover:bg-white hover:text-[#4A7C59] transform hover:scale-105 transition-all shadow-lg duration-200">
+              <button
+                onClick={() => router.push("/panduan")}
+                className="border-2 border-white text-white px-8 py-3 rounded-full font-semibold hover:bg-white hover:text-[#4A7C59] transform hover:scale-105 transition-all shadow-lg duration-200"
+              >
                 <Book className="w-5 h-5 inline mr-2" />
                 Panduan Lengkap
               </button>
@@ -361,17 +517,34 @@ export default function TambahAnakPage() {
               <div>
                 <h4 className="font-semibold text-lg mb-4">Fitur</h4>
                 <ul className="space-y-2 text-white/80">
-                  <li>Tracker Gizi</li>
-                  <li>Data Anak</li>
-                  <li>Resep Sehat</li>
+                  <li
+                    className="cursor-pointer hover:text-white"
+                    onClick={() => router.push("/tracker")}
+                  >
+                    Tracker Gizi
+                  </li>
+                  <li
+                    className="cursor-pointer hover:text-white"
+                    onClick={() => router.push("/tambah-anak")}
+                  >
+                    Data Anak
+                  </li>
+                  <li
+                    className="cursor-pointer hover:text-white"
+                    onClick={() => router.push("/resep")}
+                  >
+                    Resep Sehat
+                  </li>
                 </ul>
               </div>
               <div>
                 <h4 className="font-semibold text-lg mb-4">Dukungan</h4>
                 <ul className="space-y-2 text-white/80">
-                  <li>FAQ</li>
-                  <li>Panduan</li>
-                  <li>Tim Support</li>
+                  <li className="cursor-pointer hover:text-white">FAQ</li>
+                  <li className="cursor-pointer hover:text-white">Panduan</li>
+                  <li className="cursor-pointer hover:text-white">
+                    Tim Support
+                  </li>
                 </ul>
               </div>
             </div>

@@ -4,9 +4,10 @@ import Navbar from "@/components/navbar";
 import { useState, useEffect } from "react";
 import { Check, X, ChevronDown, ChevronUp } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import Link from "next/link";
 
 interface FoodItem {
-  id: number;
+  id: string;
   name: string;
   description: string;
   calories: number;
@@ -16,75 +17,25 @@ interface FoodItem {
 }
 
 export default function MakananPage() {
-  const [checkedItems, setCheckedItems] = useState<number[]>([]);
+  const [checkedItems, setCheckedItems] = useState<string[]>([]);
   const [showModal, setShowModal] = useState(false);
   const [searchValue, setSearchValue] = useState("");
   const [selectedFood, setSelectedFood] = useState<FoodItem | null>(null);
   const [showChecklist, setShowChecklist] = useState(false);
-  const [foodItems, setFoodItems] = useState<FoodItem[]>([
-    {
-      id: 0,
-      name: "Bubur Ayam",
-      description:
-        "Bubur Ayam merupakan makanan yang mudah dicerna dan kaya akan karbohidrat. Cocok untuk sarapan anak karena lembut dan bisa dipadukan dengan sumber protein seperti ayam dan telur.",
-      calories: 100,
-      carbs: 45,
-      fat: 30,
-      protein: 25,
-    },
-    {
-      id: 1,
-      name: "Tumis Bayam Tahu",
-      description:
-        "Kombinasi bayam dan tahu yang kaya akan protein dan zat besi, sangat baik untuk pertumbuhan anak.",
-      calories: 120,
-      carbs: 15,
-      fat: 5,
-      protein: 18,
-    },
-    {
-      id: 2,
-      name: "Nasi Telur Dadar",
-      description:
-        "Sumber karbohidrat dan protein yang praktis dan disukai anak-anak.",
-      calories: 350,
-      carbs: 50,
-      fat: 12,
-      protein: 20,
-    },
-    {
-      id: 3,
-      name: "Sup Sayur Ayam",
-      description:
-        "Sup dengan berbagai sayuran dan ayam yang bergizi dan mudah dicerna.",
-      calories: 200,
-      carbs: 20,
-      fat: 8,
-      protein: 22,
-    },
-    {
-      id: 4,
-      name: "Opor Tempe Kentang",
-      description:
-        "Makanan tradisional dengan protein nabati dari tempe dan karbohidrat dari kentang.",
-      calories: 280,
-      carbs: 35,
-      fat: 10,
-      protein: 15,
-    },
-    {
-      id: 5,
-      name: "Ubi Rebus dan Telur",
-      description:
-        "Sumber karbohidrat kompleks dan protein yang mengenyangkan.",
-      calories: 180,
-      carbs: 30,
-      fat: 5,
-      protein: 12,
-    },
-  ]);
+  const [foodItems, setFoodItems] = useState<FoodItem[]>([]);
+  const [porsiMap, setPorsiMap] = useState<Record<string, number>>({});
 
-  const toggleCheck = (id: number) => {
+  useEffect(() => {
+    fetch("/api/makanan")
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.success) {
+          setFoodItems(data.makanan);
+        }
+      });
+  }, []);
+
+  const toggleCheck = (id: string) => {
     setCheckedItems((prev) =>
       prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
     );
@@ -102,7 +53,12 @@ export default function MakananPage() {
 
   const handleSaveFood = () => {
     if (selectedFood) {
-      // Add to checklist if not already there
+      const porsiInput = document.getElementById(
+        "porsi-input"
+      ) as HTMLInputElement;
+      const jumlah = porsiInput ? parseFloat(porsiInput.value) : 100;
+      setPorsiMap((prev) => ({ ...prev, [selectedFood.id]: jumlah }));
+
       if (!checkedItems.includes(selectedFood.id)) {
         setCheckedItems((prev) => [...prev, selectedFood.id]);
       }
@@ -113,6 +69,76 @@ export default function MakananPage() {
   const checkedFoods = foodItems.filter((food) =>
     checkedItems.includes(food.id)
   );
+
+  const handleSaveChecklist = async () => {
+    const anak_id = localStorage.getItem("anak_id");
+    if (!anak_id) return alert("Anak belum dipilih!");
+
+    const tanggal = new Date().toISOString().split("T")[0];
+    const params = new URLSearchParams(window.location.search);
+    const mealParam = params.get("meal");
+
+    const enumMap = {
+      breakfast: "Breakfast",
+      lunch: "Lunch",
+      dinner: "Dinner",
+    } as const;
+
+    const totalGizi = checkedFoods.reduce(
+      (acc, food) => {
+        const porsi = porsiMap[food.id] || 100;
+        const factor = porsi / 100;
+        acc.kalori += food.calories * factor;
+        acc.protein += food.protein * factor;
+        acc.lemak += food.fat * factor;
+        acc.karbo += food.carbs * factor;
+        return acc;
+      },
+      { kalori: 0, protein: 0, lemak: 0, karbo: 0 }
+    );
+
+    const jam_makan = enumMap[mealParam as keyof typeof enumMap]; // (bisa kamu ubah dari query param / dropdown)
+    const status_gizi =
+      totalGizi.kalori >= 500 &&
+      totalGizi.protein >= 10 &&
+      totalGizi.lemak >= 10 &&
+      totalGizi.karbo >= 40
+        ? "sudah terpenuhi"
+        : "belum terpenuhi";
+
+    const makanan = checkedFoods.map((food) => ({
+      id_makanan: food.id,
+      jumlah_porsi: (porsiMap[food.id] || 100) / 100,
+    }));
+
+    const payload = {
+      anak_id,
+      jam_makan,
+      tanggal,
+      status_gizi,
+      makanan,
+    };
+
+    try {
+      const res = await fetch("/api/tracker", {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      const result = await res.json();
+      if (!res.ok) {
+        console.error("SERVER RESPONSE:", result);
+        throw new Error(result.error || "Unknown server error");
+      }
+      alert("Makanan berhasil disimpan ke tracker!");
+      console.log(result);
+      window.location.href = "/tracker"; // ⬅️ redirect otomatis
+    } catch (err) {
+      console.error("Gagal menyimpan:", err);
+      alert("Gagal menyimpan makanan ke tracker.");
+    }
+  };
 
   return (
     <main className="min-h-screen bg-white font-sans relative pb-20">
@@ -127,17 +153,30 @@ export default function MakananPage() {
         >
           Cari Makanan Kamu!
         </motion.h1>
-
+        <nav className="text-sm text-gray-500 mb-4 ml-5">
+          <span>
+            <Link
+              href="/dashboard"
+              className="text-gray-500 hover:text-gray-700"
+            >
+              Home
+            </Link>
+          </span>
+          <span>
+            <span className="mx-2">›</span>
+            <Link href="/tracker" className="text-gray-500 hover:text-gray-700">
+              Tracker
+            </Link>
+          </span>
+          <span className="mx-2">›</span>
+          <span className="text-gray-900 font-medium">Makanan</span>
+        </nav>
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.2 }}
           className="bg-[#ACD3A8] rounded-xl flex flex-col lg:flex-row items-center justify-between relative mx-0 sm:mx-4 py-6 sm:py-8"
         >
-          <button className="absolute top-[-45px] sm:top-[-57px] right-4 bg-[#6FCF97] text-white text-xs sm:text-sm font-bold px-3 sm:px-4 py-1 sm:py-1.5 rounded-full shadow hover:bg-[#5bb381] transition-all">
-            DONE ✓
-          </button>
-
           <div className="w-full lg:w-1/2 space-y-4 px-6 sm:px-10 pr-4">
             <h2 className="text-xl sm:text-2xl lg:text-3xl font-extrabold text-[#263A29] uppercase">
               Masukkan Nama Makanan Anda!
@@ -308,9 +347,7 @@ export default function MakananPage() {
                     <div className="border-t p-3 bg-gray-50">
                       <button
                         className="w-full bg-[#6FCF97] text-white py-2 rounded font-semibold hover:bg-[#5bb381] transition-colors text-sm"
-                        onClick={() =>
-                          console.log("Saved items:", checkedFoods)
-                        }
+                        onClick={handleSaveChecklist}
                       >
                         Simpan Semua
                       </button>
@@ -442,6 +479,7 @@ export default function MakananPage() {
                     </p>
                     <div className="flex gap-2">
                       <input
+                        id="porsi-input"
                         type="number"
                         defaultValue={100}
                         className="w-20 sm:w-24 border border-gray-300 rounded px-2 py-1 text-xs sm:text-sm"

@@ -1,19 +1,18 @@
 "use client";
 import React, { useState, useEffect } from "react";
 import {
+  Plus,
+  Check,
   Calendar,
   Utensils,
-  Coffee,
   Sun,
+  Coffee,
   User,
   ChevronDown,
-  Check,
-  Plus,
 } from "lucide-react";
-import Link from "next/link";
 import Navbar from "@/components/navbar";
+import Link from "next/link";
 
-// Types
 interface ChildData {
   id: string;
   name: string;
@@ -24,6 +23,7 @@ interface ChildData {
 }
 
 interface MealData {
+  id: string;
   name: string;
   fat: number;
   carb: number;
@@ -37,59 +37,13 @@ interface MealEntry {
 }
 
 export default function TrackerPage() {
-  // State for children data and selected child
-  const [children, setChildren] = useState<ChildData[]>([
-    {
-      id: "1",
-      name: "Rayhan Aurelia",
-      weight: 20.1,
-      height: 175,
-      birthDate: new Date("2015-03-10"),
-      gender: "Male",
-    },
-    {
-      id: "2",
-      name: "Anisa Putri",
-      weight: 18.3,
-      height: 162,
-      birthDate: new Date("2016-07-22"),
-      gender: "Female",
-    },
-    {
-      id: "3",
-      name: "Fahri Ramadhan",
-      weight: 22.0,
-      height: 170,
-      birthDate: new Date("2014-11-05"),
-      gender: "Male",
-    },
-    {
-      id: "4",
-      name: "Citra Ayu",
-      weight: 19.5,
-      height: 160,
-      birthDate: new Date("2017-01-15"),
-      gender: "Female",
-    },
-  ]);
+  const [children, setChildren] = useState<ChildData[]>([]);
   const [selectedChild, setSelectedChild] = useState<ChildData | null>(null);
   const [dropdownOpen, setDropdownOpen] = useState(false);
-
-  // State for current week tracking
   const [currentDate, setCurrentDate] = useState(new Date());
   const [weekDays, setWeekDays] = useState<Date[]>([]);
   const [selectedDay, setSelectedDay] = useState(new Date());
   const [showCalendar, setShowCalendar] = useState(false);
-
-  // Nutrition data state
-  const [nutritionData, setNutritionData] = useState({
-    total: { fat: 0, carb: 0, protein: 0, calories: 0 },
-    breakfast: { fat: 0, carb: 0, protein: 0, calories: 0 },
-    lunch: { fat: 0, carb: 0, protein: 0, calories: 0 },
-    dinner: { fat: 0, carb: 0, protein: 0, calories: 0 },
-  });
-
-  // Meal entries state
   const [mealEntries, setMealEntries] = useState<Record<string, MealEntry[]>>(
     {}
   );
@@ -97,57 +51,84 @@ export default function TrackerPage() {
     mealType: string;
     isOpen: boolean;
   }>({ mealType: "", isOpen: false });
+  const [statusGizi, setStatusGizi] = useState("belum terpenuhi");
+  const [nutritionData, setNutritionData] = useState({
+    total: { fat: 0, carb: 0, protein: 0, calories: 0 },
+    breakfast: { fat: 0, carb: 0, protein: 0, calories: 0 },
+    lunch: { fat: 0, carb: 0, protein: 0, calories: 0 },
+    dinner: { fat: 0, carb: 0, protein: 0, calories: 0 },
+  });
 
-  // Generate week days when currentDate changes
   useEffect(() => {
-    const startOfWeek = new Date(currentDate);
-    startOfWeek.setDate(
-      currentDate.getDate() -
-        currentDate.getDay() +
-        (currentDate.getDay() === 0 ? -6 : 1)
-    ); // Adjust to Monday as first day
-
-    const days = [];
-    for (let i = 0; i < 7; i++) {
-      const day = new Date(startOfWeek);
-      day.setDate(startOfWeek.getDate() + i);
-      days.push(day);
-    }
-
-    setWeekDays(days);
-  }, [currentDate]);
-
-  // Calculate nutrition data when meal entries change
-  useEffect(() => {
+    if (!selectedChild) return;
     const dateKey = selectedDay.toISOString().split("T")[0];
-    const entries = mealEntries[dateKey] || [];
 
-    const newNutritionData = {
-      total: { fat: 0, carb: 0, protein: 0, calories: 0 },
-      breakfast: { fat: 0, carb: 0, protein: 0, calories: 0 },
-      lunch: { fat: 0, carb: 0, protein: 0, calories: 0 },
-      dinner: { fat: 0, carb: 0, protein: 0, calories: 0 },
-    };
+    fetch(`/api/tracker?anak_id=${selectedChild.id}&tanggal=${dateKey}`)
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.success) {
+          setMealEntries((prev) => ({ ...prev, [dateKey]: data.meals }));
 
-    entries.forEach((entry) => {
-      entry.data.forEach((meal) => {
-        newNutritionData[entry.mealType].fat += meal.fat;
-        newNutritionData[entry.mealType].carb += meal.carb;
-        newNutritionData[entry.mealType].protein += meal.protein;
-        newNutritionData[entry.mealType].calories += meal.calories;
+          // Calculate total nutrition for the day
+          const totalNutrition = { fat: 0, carb: 0, protein: 0, calories: 0 };
+          const mealNutrition = {
+            breakfast: { fat: 0, carb: 0, protein: 0, calories: 0 },
+            lunch: { fat: 0, carb: 0, protein: 0, calories: 0 },
+            dinner: { fat: 0, carb: 0, protein: 0, calories: 0 },
+          };
 
-        newNutritionData.total.fat += meal.fat;
-        newNutritionData.total.carb += meal.carb;
-        newNutritionData.total.protein += meal.protein;
-        newNutritionData.total.calories += meal.calories;
+          data.meals.forEach((entry: any) => {
+            entry.data.forEach((meal: MealData) => {
+              // Convert to number to ensure addition, not concatenation
+              const mealFat = Number(meal.fat) || 0;
+              const mealCarb = Number(meal.carb) || 0;
+              const mealProtein = Number(meal.protein) || 0;
+              const mealCalories = Number(meal.calories) || 0;
+
+              totalNutrition.fat += mealFat;
+              totalNutrition.carb += mealCarb;
+              totalNutrition.protein += mealProtein;
+              totalNutrition.calories += mealCalories;
+
+              if (entry.mealType === "breakfast") {
+                mealNutrition.breakfast.fat += mealFat;
+                mealNutrition.breakfast.carb += mealCarb;
+                mealNutrition.breakfast.protein += mealProtein;
+                mealNutrition.breakfast.calories += mealCalories;
+              } else if (entry.mealType === "lunch") {
+                mealNutrition.lunch.fat += mealFat;
+                mealNutrition.lunch.carb += mealCarb;
+                mealNutrition.lunch.protein += mealProtein;
+                mealNutrition.lunch.calories += mealCalories;
+              } else if (entry.mealType === "dinner") {
+                mealNutrition.dinner.fat += mealFat;
+                mealNutrition.dinner.carb += mealCarb;
+                mealNutrition.dinner.protein += mealProtein;
+                mealNutrition.dinner.calories += mealCalories;
+              }
+            });
+          });
+
+          setNutritionData({
+            total: totalNutrition,
+            breakfast: mealNutrition.breakfast,
+            lunch: mealNutrition.lunch,
+            dinner: mealNutrition.dinner,
+          });
+
+          // Update nutrition status
+          const terpenuhi =
+            totalNutrition.calories >= 500 &&
+            totalNutrition.protein >= 10 &&
+            totalNutrition.fat >= 10 &&
+            totalNutrition.carb >= 40;
+
+          setStatusGizi(terpenuhi ? "sudah terpenuhi" : "belum terpenuhi");
+        }
       });
-    });
+  }, [selectedChild, selectedDay]);
 
-    setNutritionData(newNutritionData);
-  }, [mealEntries, selectedDay]);
-
-  // Format date to "Today" if it's the current day
-  const formatDayHeader = (date: Date) => {
+  const formatDayHeader = (date: Date): string => {
     const today = new Date();
     return date.toDateString() === today.toDateString()
       ? "Today"
@@ -158,7 +139,44 @@ export default function TrackerPage() {
         });
   };
 
-  // Handle week navigation
+  useEffect(() => {
+    fetch("/api/anak")
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.success) setChildren(data.children);
+      });
+  }, []);
+
+  useEffect(() => {
+    const startOfWeek = new Date(currentDate);
+    startOfWeek.setDate(
+      currentDate.getDate() -
+        currentDate.getDay() +
+        (currentDate.getDay() === 0 ? -6 : 1)
+    );
+    const days = [];
+    for (let i = 0; i < 7; i++) {
+      const day = new Date(startOfWeek);
+      day.setDate(startOfWeek.getDate() + i);
+      days.push(day);
+    }
+    setWeekDays(days);
+  }, [currentDate]);
+
+  const toggleMealDropdown = (mealType: string) => {
+    setDropdownMeal((prev) => ({
+      mealType: prev.mealType === mealType && prev.isOpen ? "" : mealType,
+      isOpen: prev.mealType !== mealType || !prev.isOpen,
+    }));
+  };
+
+  const getMealsForDay = (mealType: "breakfast" | "lunch" | "dinner") => {
+    const dateKey = selectedDay.toISOString().split("T")[0];
+    const entries = mealEntries[dateKey] || [];
+    const mealEntry = entries.find((entry) => entry.mealType === mealType);
+    return mealEntry ? mealEntry.data : [];
+  };
+
   const handlePrevWeek = () => {
     const newDate = new Date(currentDate);
     newDate.setDate(newDate.getDate() - 7);
@@ -171,26 +189,22 @@ export default function TrackerPage() {
     setCurrentDate(newDate);
   };
 
-  // Check if a date is the selected day
   const isSelectedDay = (date: Date) => {
     return date.toDateString() === selectedDay.toDateString();
   };
 
-  // Check if a date is in the past (for completed days)
   const isPastDay = (date: Date) => {
     const today = new Date();
-    today.setHours(23, 59, 59, 999); // Set to end of today
+    today.setHours(23, 59, 59, 999);
     return date < today;
   };
 
-  // Handle calendar date selection
   const handleDateChange = (date: Date) => {
     setCurrentDate(date);
     setSelectedDay(date);
     setShowCalendar(false);
   };
 
-  // Generate calendar for date picker
   const generateCalendar = () => {
     const year = currentDate.getFullYear();
     const month = currentDate.getMonth();
@@ -214,66 +228,126 @@ export default function TrackerPage() {
     return calendar;
   };
 
-  // Add meal entry (simulated)
   const addMealEntry = (mealType: "breakfast" | "lunch" | "dinner") => {
     const dateKey = selectedDay.toISOString().split("T")[0];
     const newMeal: MealData = {
+      id: "contoh-id",
       name: "Nasi Goreng",
       fat: 15,
       carb: 50,
       protein: 10,
       calories: 350,
     };
-
     setMealEntries((prev) => {
-      const existingEntries = prev[dateKey] || [];
-      const mealEntryIndex = existingEntries.findIndex(
-        (entry) => entry.mealType === mealType
-      );
-
-      if (mealEntryIndex >= 0) {
-        // Add to existing meal type
-        const updatedEntries = [...existingEntries];
-        updatedEntries[mealEntryIndex] = {
-          ...updatedEntries[mealEntryIndex],
-          data: [...updatedEntries[mealEntryIndex].data, newMeal],
+      const entries = prev[dateKey] || [];
+      const idx = entries.findIndex((e) => e.mealType === mealType);
+      if (idx >= 0) {
+        const updated = [...entries];
+        updated[idx] = {
+          ...updated[idx],
+          data: [...updated[idx].data, newMeal],
         };
-        return {
-          ...prev,
-          [dateKey]: updatedEntries,
-        };
+        return { ...prev, [dateKey]: updated };
       } else {
-        // Create new meal type entry
         return {
           ...prev,
-          [dateKey]: [...existingEntries, { mealType, data: [newMeal] }],
+          [dateKey]: [...entries, { mealType, data: [newMeal] }],
         };
       }
     });
-
     setDropdownMeal({ mealType: "", isOpen: false });
   };
 
-  // Toggle meal dropdown
-  const toggleMealDropdown = (mealType: string) => {
-    setDropdownMeal((prev) => ({
-      mealType: prev.mealType === mealType && prev.isOpen ? "" : mealType,
-      isOpen: prev.mealType !== mealType || !prev.isOpen,
-    }));
-  };
-
-  // Get meals for selected day and meal type
-  const getMealsForDay = (mealType: "breakfast" | "lunch" | "dinner") => {
+  const submitTracking = async () => {
+    if (!selectedChild) return alert("Pilih anak terlebih dahulu");
     const dateKey = selectedDay.toISOString().split("T")[0];
     const entries = mealEntries[dateKey] || [];
-    const mealEntry = entries.find((entry) => entry.mealType === mealType);
-    return mealEntry ? mealEntry.data : [];
+
+    for (const entry of entries) {
+      const makanan = entry.data.map((meal) => ({
+        id_makanan: meal.id,
+        jumlah_porsi: 1,
+      }));
+
+      const totalGizi = entry.data.reduce(
+        (acc, meal) => {
+          // Ensure numbers are properly added, not concatenated
+          acc.kalori += Number(meal.calories) || 0;
+          acc.protein += Number(meal.protein) || 0;
+          acc.lemak += Number(meal.fat) || 0;
+          acc.karbo += Number(meal.carb) || 0;
+          return acc;
+        },
+        { kalori: 0, protein: 0, lemak: 0, karbo: 0 }
+      );
+
+      const statusGizi =
+        totalGizi.kalori >= 500 &&
+        totalGizi.protein >= 10 &&
+        totalGizi.lemak >= 10 &&
+        totalGizi.karbo >= 40
+          ? "sudah terpenuhi"
+          : "belum terpenuhi";
+
+      const payload = {
+        anak_id: selectedChild.id,
+        jam_makan:
+          entry.mealType === "breakfast"
+            ? "Breakfast"
+            : entry.mealType === "lunch"
+            ? "Lunch"
+            : "Dinner",
+        tanggal: dateKey,
+        status_gizi: statusGizi,
+        makanan,
+      };
+
+      try {
+        const res = await fetch("/api/tracker", {
+          method: "POST",
+          credentials: "include",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+        const result = await res.json();
+        if (!res.ok) throw new Error(result.error);
+        console.log("Success:", result);
+        // Refetch data agar hasil terbaru muncul di UI
+        const refreshed = await fetch(
+          `/api/tracker?anak_id=${selectedChild.id}&tanggal=${dateKey}`
+        );
+        const refreshedData = await refreshed.json();
+        if (refreshedData.success) {
+          setMealEntries((prev) => ({
+            ...prev,
+            [dateKey]: refreshedData.meals,
+          }));
+        }
+      } catch (err) {
+        console.error("Error:", err);
+        alert("Gagal menyimpan tracking");
+      }
+    }
+    alert("Tracking berhasil disimpan!");
   };
+
   return (
     <div className="min-h-screen bg-gray-50">
       <Navbar />
 
       <div className="container mx-auto px-4 py-8">
+        <nav className="text-sm text-gray-500 mb-4">
+          <span>
+            <Link
+              href="/dashboard"
+              className="text-gray-500 hover:text-gray-700"
+            >
+              Home
+            </Link>
+          </span>
+          <span className="mx-2">›</span>
+          <span className="text-gray-900 font-medium">Tracker</span>
+        </nav>
         <div className="flex flex-col lg:flex-row gap-6">
           {/* Left Section - 50% width */}
           <div className="w-full lg:w-1/2 bg-[#BBD8A3] rounded-lg p-6">
@@ -324,6 +398,7 @@ export default function TrackerPage() {
                         onClick={() => {
                           setSelectedChild(child);
                           setDropdownOpen(false);
+                          localStorage.setItem("anak_id", child.id);
                         }}
                         className="w-full px-4 py-3 text-left hover:bg-gray-50 flex items-center gap-3 border-b border-gray-100 last:border-b-0"
                       >
@@ -336,11 +411,11 @@ export default function TrackerPage() {
               </div>
             </div>
 
-            <div className="flex justify-center items-center h-64">
-              {/* Placeholder for image */}
-              <div className="w-full h-full bg-gray-200 rounded-lg flex items-center justify-center">
-                <span className="text-gray-500">Tracker Image</span>
-              </div>
+            <div className="w-full overflow-auto">
+              <img
+                src="image/tracker.png"
+                className="w-[150%] h-auto object-contain"
+              />
             </div>
           </div>
 
@@ -500,27 +575,29 @@ export default function TrackerPage() {
               <h3 className="text-lg font-semibold mb-4">
                 {formatDayHeader(selectedDay)}
               </h3>
-
               {/* Nutrition totals */}
               <div className="grid grid-cols-4 gap-4 mb-6">
                 <div className="text-center">
                   <div className="font-medium">Lemak</div>
-                  <div>{nutritionData.total.fat}g</div>
+                  <div>{Math.round(nutritionData.total.fat * 100) / 100}g</div>
                 </div>
                 <div className="text-center">
                   <div className="font-medium">Karbo</div>
-                  <div>{nutritionData.total.carb}g</div>
+                  <div>{Math.round(nutritionData.total.carb * 100) / 100}g</div>
                 </div>
                 <div className="text-center">
                   <div className="font-medium">Protein</div>
-                  <div>{nutritionData.total.protein}g</div>
+                  <div>
+                    {Math.round(nutritionData.total.protein * 100) / 100}g
+                  </div>
                 </div>
                 <div className="text-center">
                   <div className="font-medium">Kalori</div>
-                  <div>{nutritionData.total.calories}kcal</div>
+                  <div>
+                    {Math.round(nutritionData.total.calories * 100) / 100}kcal
+                  </div>
                 </div>
               </div>
-
               {/* Meal cards */}
               <div className="space-y-4 mb-6">
                 {/* Breakfast */}
@@ -531,29 +608,12 @@ export default function TrackerPage() {
                       <h4 className="font-medium">Breakfast</h4>
                     </div>
                     <div className="relative">
-                      <button
-                        onClick={() => toggleMealDropdown("breakfast")}
+                      <Link
+                        href={"/makanan?meal=breakfast"}
                         className="text-green-500 hover:text-green-700 text-2xl font-bold w-8 h-8 flex items-center justify-center"
                       >
                         <Plus size={20} />
-                      </button>
-                      {dropdownMeal.mealType === "breakfast" &&
-                        dropdownMeal.isOpen && (
-                          <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg z-10">
-                            <Link
-                              href="/makanan?meal=breakfast"
-                              className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                            >
-                              Tambah Makanan
-                            </Link>
-                            <button
-                              onClick={() => addMealEntry("breakfast")}
-                              className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                            >
-                              Tambah Contoh
-                            </button>
-                          </div>
-                        )}
+                      </Link>
                     </div>
                   </div>
                   <div className="bg-[#EDF6FF] p-3">
@@ -571,9 +631,15 @@ export default function TrackerPage() {
                             className="grid grid-cols-4 gap-4 mb-2"
                           >
                             <div className="text-center">{meal.name}</div>
-                            <div className="text-center">{meal.fat}g</div>
-                            <div className="text-center">{meal.carb}g</div>
-                            <div className="text-center">{meal.protein}g</div>
+                            <div className="text-center">
+                              {Number(meal.fat) || 0}g
+                            </div>
+                            <div className="text-center">
+                              {Number(meal.carb) || 0}g
+                            </div>
+                            <div className="text-center">
+                              {Number(meal.protein) || 0}g
+                            </div>
                           </div>
                         ))}
                       </>
@@ -585,13 +651,15 @@ export default function TrackerPage() {
                     <div className="grid grid-cols-4 gap-4 mt-2 pt-2 border-t border-gray-200">
                       <div className="text-center font-medium">Total</div>
                       <div className="text-center">
-                        {nutritionData.breakfast.fat}g
+                        {Math.round(nutritionData.breakfast.fat * 100) / 100}g
                       </div>
                       <div className="text-center">
-                        {nutritionData.breakfast.carb}g
+                        {Math.round(nutritionData.breakfast.carb * 100) / 100}g
                       </div>
                       <div className="text-center">
-                        {nutritionData.breakfast.protein}g
+                        {Math.round(nutritionData.breakfast.protein * 100) /
+                          100}
+                        g
                       </div>
                     </div>
                   </div>
@@ -605,29 +673,12 @@ export default function TrackerPage() {
                       <h4 className="font-medium">Lunch</h4>
                     </div>
                     <div className="relative">
-                      <button
-                        onClick={() => toggleMealDropdown("lunch")}
+                      <Link
+                        href={"/makanan?meal=lunch"}
                         className="text-green-500 hover:text-green-700 text-2xl font-bold w-8 h-8 flex items-center justify-center"
                       >
                         <Plus size={20} />
-                      </button>
-                      {dropdownMeal.mealType === "lunch" &&
-                        dropdownMeal.isOpen && (
-                          <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg z-10">
-                            <Link
-                              href="/makanan?meal=lunch"
-                              className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                            >
-                              Tambah Makanan
-                            </Link>
-                            <button
-                              onClick={() => addMealEntry("lunch")}
-                              className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                            >
-                              Tambah Contoh
-                            </button>
-                          </div>
-                        )}
+                      </Link>
                     </div>
                   </div>
                   <div className="bg-[#EDF6FF] p-3">
@@ -645,9 +696,15 @@ export default function TrackerPage() {
                             className="grid grid-cols-4 gap-4 mb-2"
                           >
                             <div className="text-center">{meal.name}</div>
-                            <div className="text-center">{meal.fat}g</div>
-                            <div className="text-center">{meal.carb}g</div>
-                            <div className="text-center">{meal.protein}g</div>
+                            <div className="text-center">
+                              {Number(meal.fat) || 0}g
+                            </div>
+                            <div className="text-center">
+                              {Number(meal.carb) || 0}g
+                            </div>
+                            <div className="text-center">
+                              {Number(meal.protein) || 0}g
+                            </div>
                           </div>
                         ))}
                       </>
@@ -659,13 +716,13 @@ export default function TrackerPage() {
                     <div className="grid grid-cols-4 gap-4 mt-2 pt-2 border-t border-gray-200">
                       <div className="text-center font-medium">Total</div>
                       <div className="text-center">
-                        {nutritionData.lunch.fat}g
+                        {Math.round(nutritionData.lunch.fat * 100) / 100}g
                       </div>
                       <div className="text-center">
-                        {nutritionData.lunch.carb}g
+                        {Math.round(nutritionData.lunch.carb * 100) / 100}g
                       </div>
                       <div className="text-center">
-                        {nutritionData.lunch.protein}g
+                        {Math.round(nutritionData.lunch.protein * 100) / 100}g
                       </div>
                     </div>
                   </div>
@@ -679,29 +736,14 @@ export default function TrackerPage() {
                       <h4 className="font-medium">Dinner</h4>
                     </div>
                     <div className="relative">
-                      <button
-                        onClick={() => toggleMealDropdown("dinner")}
-                        className="text-green-500 hover:text-green-700 text-2xl font-bold w-8 h-8 flex items-center justify-center"
-                      >
-                        <Plus size={20} />
-                      </button>
-                      {dropdownMeal.mealType === "dinner" &&
-                        dropdownMeal.isOpen && (
-                          <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg z-10">
-                            <Link
-                              href="/makanan?meal=dinner"
-                              className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                            >
-                              Tambah Makanan
-                            </Link>
-                            <button
-                              onClick={() => addMealEntry("dinner")}
-                              className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                            >
-                              Tambah Contoh
-                            </button>
-                          </div>
-                        )}
+                      <div className="relative">
+                        <Link
+                          href={"/makanan?meal=dinner"}
+                          className="text-green-500 hover:text-green-700 text-2xl font-bold w-8 h-8 flex items-center justify-center"
+                        >
+                          <Plus size={20} />
+                        </Link>
+                      </div>
                     </div>
                   </div>
                   <div className="bg-[#EDF6FF] p-3">
@@ -719,9 +761,15 @@ export default function TrackerPage() {
                             className="grid grid-cols-4 gap-4 mb-2"
                           >
                             <div className="text-center">{meal.name}</div>
-                            <div className="text-center">{meal.fat}g</div>
-                            <div className="text-center">{meal.carb}g</div>
-                            <div className="text-center">{meal.protein}g</div>
+                            <div className="text-center">
+                              {Number(meal.fat) || 0}g
+                            </div>
+                            <div className="text-center">
+                              {Number(meal.carb) || 0}g
+                            </div>
+                            <div className="text-center">
+                              {Number(meal.protein) || 0}g
+                            </div>
                           </div>
                         ))}
                       </>
@@ -733,13 +781,13 @@ export default function TrackerPage() {
                     <div className="grid grid-cols-4 gap-4 mt-2 pt-2 border-t border-gray-200">
                       <div className="text-center font-medium">Total</div>
                       <div className="text-center">
-                        {nutritionData.dinner.fat}g
+                        {Math.round(nutritionData.dinner.fat * 100) / 100}g
                       </div>
                       <div className="text-center">
-                        {nutritionData.dinner.carb}g
+                        {Math.round(nutritionData.dinner.carb * 100) / 100}g
                       </div>
                       <div className="text-center">
-                        {nutritionData.dinner.protein}g
+                        {Math.round(nutritionData.dinner.protein * 100) / 100}g
                       </div>
                     </div>
                   </div>
@@ -748,14 +796,22 @@ export default function TrackerPage() {
 
               {/* Nutrition status */}
               <div
-                className="p-4 rounded-lg border border-gray-200 text-center"
-                style={{
-                  backgroundColor: "rgba(220, 38, 38, 0.12)", // red-600 with 12% opacity
-                  borderColor: "rgba(220, 38, 38, 0.3)", // red-600 with 30% opacity for border
-                }}
+                className={`p-4 rounded-lg border text-center ${
+                  statusGizi === "sudah terpenuhi"
+                    ? "bg-green-50 border-green-200"
+                    : "bg-red-50 border-red-200"
+                }`}
               >
-                <p className="text-red-600 font-medium">
-                  Kebutuhan Gizi Hari Ini Belum Terpenuhi
+                <p
+                  className={
+                    statusGizi === "sudah terpenuhi"
+                      ? "text-green-600 font-medium"
+                      : "text-red-600 font-medium"
+                  }
+                >
+                  {statusGizi === "sudah terpenuhi"
+                    ? "Kebutuhan Gizi Hari Ini Sudah Terpenuhi"
+                    : "Kebutuhan Gizi Hari Ini Belum Terpenuhi"}
                 </p>
               </div>
             </div>

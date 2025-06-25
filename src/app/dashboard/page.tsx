@@ -190,7 +190,7 @@ export default function TambahAnakPage() {
   const mainFeatures = [
     {
       title: "Data Anak",
-      description: "Kelola informasi lengkap tentang anak-anak Anda",
+      description: "Kelola informasi lengkap tentang anak Anda",
       icon: <Users className="w-8 h-8" />,
       color: "from-[#7FB069] to-[#6BA055]",
       hoverColor: "hover:from-[#6BA055] hover:to-[#5A8A47]",
@@ -243,6 +243,7 @@ export default function TambahAnakPage() {
       <Navbar />
 
       <div className="container mx-auto px-4 sm:px-6 lg:px-20 py-8">
+        <nav className="text-sm text-gray-500 mb-4"></nav>
         {/* Banner Slider */}
         <div
           className={`relative mb-12 rounded-2xl overflow-hidden shadow-2xl transform transition-all duration-1000 ${
@@ -457,27 +458,6 @@ export default function TambahAnakPage() {
             </div>
           ))}
         </div>
-
-        {/* Quick Actions */}
-        {stats.totalChildren === 0 && !isLoading && (
-          <div className="bg-blue-50 border border-blue-200 rounded-xl p-8 text-center mb-12">
-            <Baby className="w-16 h-16 text-blue-600 mx-auto mb-4" />
-            <h3 className="text-xl font-semibold text-gray-800 mb-2">
-              Belum ada data anak
-            </h3>
-            <p className="text-gray-600 mb-6">
-              Mulai dengan menambahkan data anak Anda untuk memantau pertumbuhan
-              dan nutrisinya
-            </p>
-            <button
-              onClick={() => router.push("/tambah-anak")}
-              className="bg-blue-600 text-white px-6 py-3 rounded-full font-semibold hover:bg-blue-700 transform hover:scale-105 transition-all duration-200 shadow-lg inline-flex items-center"
-            >
-              <Plus className="w-5 h-5 mr-2" />
-              Tambah Data Anak Pertama
-            </button>
-          </div>
-        )}
       </div>
 
       {/* Footer */}
@@ -496,58 +476,51 @@ export default function TambahAnakPage() {
                 <Users className="w-5 h-5 inline mr-2" />
                 Tambah Data Anak
               </button>
-              <button
-                onClick={() => router.push("/panduan")}
-                className="border-2 border-white text-white px-8 py-3 rounded-full font-semibold hover:bg-white hover:text-[#4A7C59] transform hover:scale-105 transition-all shadow-lg duration-200"
-              >
-                <Book className="w-5 h-5 inline mr-2" />
-                Panduan Lengkap
-              </button>
             </div>
           </div>
 
-          {/* Footer Bottom */}
           <div className="border-t border-white/20 pt-8">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-8 text-center md:text-left">
-              <div>
-                <h4 className="font-semibold text-lg mb-4">Kontak</h4>
-                <p className="text-white/80">Email: info@childnutrition.com</p>
-                <p className="text-white/80">Phone: +62 123 4567 890</p>
-              </div>
-              <div>
-                <h4 className="font-semibold text-lg mb-4">Fitur</h4>
-                <ul className="space-y-2 text-white/80">
-                  <li
-                    className="cursor-pointer hover:text-white"
-                    onClick={() => router.push("/tracker")}
-                  >
-                    Tracker Gizi
-                  </li>
-                  <li
-                    className="cursor-pointer hover:text-white"
-                    onClick={() => router.push("/tambah-anak")}
-                  >
-                    Data Anak
-                  </li>
-                  <li
-                    className="cursor-pointer hover:text-white"
-                    onClick={() => router.push("/resep")}
-                  >
-                    Resep Sehat
-                  </li>
-                </ul>
-              </div>
-              <div>
-                <h4 className="font-semibold text-lg mb-4">Dukungan</h4>
-                <ul className="space-y-2 text-white/80">
-                  <li className="cursor-pointer hover:text-white">FAQ</li>
-                  <li className="cursor-pointer hover:text-white">Panduan</li>
-                  <li className="cursor-pointer hover:text-white">
-                    Tim Support
-                  </li>
-                </ul>
+            {/* Footer Bottom */}
+            <div className="border-white/20 pt-8">
+              {/* Wrapper untuk pusatkan isi */}
+              <div className="max-w-4xl mx-auto px-4">
+                <div className="flex justify-center">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-8 text-center">
+                    <div>
+                      <h4 className="font-semibold text-lg mb-4">Kontak</h4>
+                      <p className="text-white/80">
+                        Email: info@childnutrition.com
+                      </p>
+                      <p className="text-white/80">Phone: +62 123 4567 890</p>
+                    </div>
+                    <div>
+                      <h4 className="font-semibold text-lg mb-4">Fitur</h4>
+                      <ul className="space-y-2 text-white/80">
+                        <li
+                          className="cursor-pointer hover:text-white"
+                          onClick={() => router.push("/tracker")}
+                        >
+                          Tracker Gizi
+                        </li>
+                        <li
+                          className="cursor-pointer hover:text-white"
+                          onClick={() => router.push("/tambah-anak")}
+                        >
+                          Data Anak
+                        </li>
+                        <li
+                          className="cursor-pointer hover:text-white"
+                          onClick={() => router.push("/resep")}
+                        >
+                          Resep Sehat
+                        </li>
+                      </ul>
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
+
             <div className="text-center mt-8 pt-4 border-t border-white/20">
               <p className="text-white/70">
                 © 2025 Child Nutrition Tracker. All rights reserved.

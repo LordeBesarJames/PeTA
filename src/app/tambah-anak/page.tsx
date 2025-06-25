@@ -4,6 +4,7 @@ import React, { useState, useEffect } from "react";
 import Navbar from "@/components/navbar";
 import { Search, Trash2, X, Edit, Mars, Venus } from "lucide-react";
 import { useAuth } from "../../../context/AuthContext";
+import Link from "next/link";
 
 // Updated interface to match database schema
 export interface ChildData {
@@ -393,7 +394,18 @@ export default function TambahAnakPage() {
       >
         <Navbar />
         <div className="container mx-auto px-4 sm:px-20 py-5">
-          <h1 className="text-xl sm:text-3xl font-bold mb-6">Data Anak</h1>
+          <nav className="text-sm text-gray-500 mb-4">
+            <span>
+              <Link
+                href="/dashboard"
+                className="text-gray-500 hover:text-gray-700"
+              >
+                Home
+              </Link>
+            </span>
+            <span className="mx-2">›</span>
+            <span className="text-gray-900 font-medium">Data Anak</span>
+          </nav>
 
           {/* Hero Section */}
           <div className="mb-8 bg-[#BBD8A3] rounded-lg shadow-lg flex flex-col sm:flex-row justify-between items-center relative overflow-hidden min-h-[250px] hover:shadow-xl transition-shadow duration-300">
